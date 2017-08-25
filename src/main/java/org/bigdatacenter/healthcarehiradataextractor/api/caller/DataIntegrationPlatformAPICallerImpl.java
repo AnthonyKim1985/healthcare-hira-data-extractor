@@ -39,6 +39,9 @@ public class DataIntegrationPlatformAPICallerImpl implements DataIntegrationPlat
     @Value("${platform.rest.api.create.ftp-info}")
     private String createFtpInfoURL;
 
+    @Value("${platform.rest.api.read.projection-names}")
+    private String readProjectionNamesURL;
+
     public DataIntegrationPlatformAPICallerImpl() {
         restTemplate = new RestTemplate();
         restTemplate.getMessageConverters().add(new MappingJackson2HttpMessageConverter());
@@ -106,5 +109,16 @@ public class DataIntegrationPlatformAPICallerImpl implements DataIntegrationPlat
         Integer response = restTemplate.postForObject(createFtpInfoURL, request, Integer.class);
 
         logger.info(String.format("%s - The FTP Info has been inserted. (code: %d)", currentThreadName, response));
+    }
+
+    @Override
+    public String callReadProjectionNames(Integer dataSetUID, String tableName) {
+        final MultiValueMap<String, String> parameters = new LinkedMultiValueMap<>();
+        parameters.add("dataSetUID", String.valueOf(dataSetUID));
+        parameters.add("tableName", tableName);
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(parameters, headers);
+
+        return restTemplate.postForObject(readProjectionNamesURL, request, String.class);
     }
 }

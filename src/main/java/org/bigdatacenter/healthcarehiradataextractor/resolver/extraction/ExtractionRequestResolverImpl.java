@@ -1,5 +1,6 @@
 package org.bigdatacenter.healthcarehiradataextractor.resolver.extraction;
 
+import org.bigdatacenter.healthcarehiradataextractor.api.caller.DataIntegrationPlatformAPICaller;
 import org.bigdatacenter.healthcarehiradataextractor.domain.extraction.parameter.ExtractionParameter;
 import org.bigdatacenter.healthcarehiradataextractor.domain.extraction.parameter.info.AdjacentTableInfo;
 import org.bigdatacenter.healthcarehiradataextractor.domain.extraction.parameter.map.ParameterKey;
@@ -36,19 +37,21 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
 
     private final ExtractionRequestParameterResolver extractionRequestParameterResolver;
 
+    private final DataIntegrationPlatformAPICaller dataIntegrationPlatformAPICaller;
+
     @Autowired
-    public ExtractionRequestResolverImpl(SelectClauseBuilder selectClauseBuilder, WhereClauseBuilder whereClauseBuilder, JoinClauseBuilder joinClauseBuilder, ExtractionRequestParameterResolver extractionRequestParameterResolver) {
+    public ExtractionRequestResolverImpl(SelectClauseBuilder selectClauseBuilder, WhereClauseBuilder whereClauseBuilder, JoinClauseBuilder joinClauseBuilder, ExtractionRequestParameterResolver extractionRequestParameterResolver, DataIntegrationPlatformAPICaller dataIntegrationPlatformAPICaller) {
         this.selectClauseBuilder = selectClauseBuilder;
         this.whereClauseBuilder = whereClauseBuilder;
         this.joinClauseBuilder = joinClauseBuilder;
         this.extractionRequestParameterResolver = extractionRequestParameterResolver;
+        this.dataIntegrationPlatformAPICaller = dataIntegrationPlatformAPICaller;
     }
 
     @Override
     public ExtractionRequest buildExtractionRequest(ExtractionParameter extractionParameter) {
         if (extractionParameter == null)
             throw new NullPointerException(String.format("%s - extractionParameter is null.", currentThreadName));
-
 
         try {
             final TrRequestInfo requestInfo = extractionParameter.getRequestInfo();
@@ -137,6 +140,7 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
         List<QueryTask> queryTaskList = new ArrayList<>();
 
         for (AdjacentTableInfo adjacentTableInfo : adjacentTableInfoSet) {
+            final Integer dataSetYear = adjacentTableInfo.getDataSetYear();
             final String tableName = adjacentTableInfo.getTableName();
             final String header = adjacentTableInfo.getHeader();
 
@@ -152,6 +156,32 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
             DataExtractionTask dataExtractionTask = new DataExtractionTask(tableName/*Data File Name*/, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, header);
 
             queryTaskList.add(new QueryTask(tableCreationTask, dataExtractionTask));
+
+            //
+            // TODO: Make ykiho Extraction tasks
+            //
+            if (tableName.contains("_t20_")) {
+                final String[] extraTablePrefixes = {"ykiho"};
+
+                for (String extraTablePrefix : extraTablePrefixes) {
+                    logger.info(String.format("%s - ex_joinDbName: %s", currentThreadName, joinDbName));
+                    logger.info(String.format("%s - ex_joinTableName: %s", currentThreadName, joinTableName));
+
+                    final String extraFileName = String.format("%s_%s_%d", databaseName, extraTablePrefix, dataSetYear);
+                    logger.info(String.format("%s - extraFileName: %s", currentThreadName, extraFileName));
+
+                    final String extraHdfsLocation = CommonUtil.getHdfsLocation(String.format("%s.%s", databaseName, extraFileName), dataSetUID);
+                    logger.info(String.format("%s - extraHdfsLocation: %s", currentThreadName, extraHdfsLocation));
+
+                    final String extraHeader = dataIntegrationPlatformAPICaller.callReadProjectionNames(dataSetUID, extraFileName);
+                    logger.info(String.format("%s - extraHeader: %s", currentThreadName, extraHeader));
+
+                    final String extraQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, extraHeader);
+                    logger.info(String.format("%s - extraQuery: %s", currentThreadName, extraQuery));
+
+                    queryTaskList.add(new QueryTask(null, new DataExtractionTask(extraFileName/*Data File Name*/, extraHdfsLocation, extraQuery, extraHeader)));
+                }
+            }
         }
 
         return queryTaskList;

@@ -14,4 +14,6 @@ public interface DataIntegrationPlatformAPICaller {
     void callUpdateProcessState(Integer dataSetUID, Integer processState);
 
     void callCreateFtpInfo(Integer dataSetUID, String userID, String ftpURI);
+
+    String callReadProjectionNames(Integer dataSetUID, String tableName);
 }
