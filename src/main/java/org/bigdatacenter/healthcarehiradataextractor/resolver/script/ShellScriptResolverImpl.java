@@ -15,13 +15,13 @@ public class ShellScriptResolverImpl implements ShellScriptResolver {
     private static final Logger logger = LoggerFactory.getLogger(ShellScriptResolverImpl.class);
 
     @Override
-    public void runReducePartsMerger(String hdfsLocation, String header, String homePath, String dataFileName) {
-        fork(CommandBuilder.buildReducePartsMerger(hdfsLocation, header, homePath, dataFileName));
+    public void runReducePartsMerger(String hdfsLocation, String header, String homePath, String dataFileName, String dataSetName) {
+        fork(CommandBuilder.buildReducePartsMerger(hdfsLocation, header, homePath, dataFileName, dataSetName));
     }
 
     @Override
-    public void runArchiveExtractedDataSet(String archiveFileName, String ftpLocation, String homePath) {
-        fork(CommandBuilder.buildArchiveExtractedDataSet(archiveFileName, ftpLocation, homePath));
+    public void runArchiveExtractedDataSet(String archiveFileName, String ftpLocation, String homePath, String dataSetName) {
+        fork(CommandBuilder.buildArchiveExtractedDataSet(archiveFileName, ftpLocation, homePath, dataSetName));
     }
 
     private void fork(String target) {
@@ -41,12 +41,12 @@ public class ShellScriptResolverImpl implements ShellScriptResolver {
     }
 
     private static final class CommandBuilder implements Serializable {
-        static String buildReducePartsMerger(String hdfsLocation, String header, String homePath, String dataFileName) {
-            return String.format("sh sh/hdfs-parts-merger.sh %s %s %s %s", hdfsLocation, header, homePath, dataFileName);
+        static String buildReducePartsMerger(String hdfsLocation, String header, String homePath, String dataFileName, String dataSetName) {
+            return String.format("sh sh/hdfs-parts-merger.sh %s %s %s %s %s", hdfsLocation, header, homePath, dataFileName, dataSetName);
         }
 
-        static String buildArchiveExtractedDataSet(String archiveFileName, String ftpLocation, String homePath) {
-            return String.format("sh sh/archive-data-set.sh %s %s %s", archiveFileName, ftpLocation, homePath);
+        static String buildArchiveExtractedDataSet(String archiveFileName, String ftpLocation, String homePath, String dataSetName) {
+            return String.format("sh sh/archive-data-set.sh %s %s %s %s", archiveFileName, ftpLocation, homePath, dataSetName);
         }
     }
 

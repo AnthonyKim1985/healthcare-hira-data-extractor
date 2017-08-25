@@ -46,7 +46,6 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
     @Override
     public void runReceiver(ExtractionRequest extractionRequest) {
         if (checkExtractionRequestValidity(extractionRequest)) {
-            final String databaseName = extractionRequest.getDatabaseName();
             final TrRequestInfo requestInfo = extractionRequest.getRequestInfo();
             final Integer dataSetUID = requestInfo.getDataSetUID();
 
@@ -56,7 +55,7 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
                 dataIntegrationPlatformAPICaller.callUpdateProcessState(dataSetUID, DataIntegrationPlatformAPICaller.PROCESS_STATE_CODE_PROCESSING);
 
                 runQueryTask(extractionRequest);
-                runArchiveTask(databaseName, requestInfo);
+                runArchiveTask(extractionRequest);
 
                 final Long jobEndTime = System.currentTimeMillis();
                 dataIntegrationPlatformAPICaller.callUpdateJobEndTime(dataSetUID, jobEndTime);
@@ -98,9 +97,9 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
 
     private void runQueryTask(ExtractionRequest extractionRequest) {
         try {
+            final String databaseName = extractionRequest.getDatabaseName();
             final List<QueryTask> queryTaskList = extractionRequest.getQueryTaskList();
             final int queryTaskListSize = queryTaskList.size();
-
 
             for (int i = 0; i < queryTaskListSize; i++) {
                 final QueryTask queryTask = queryTaskList.get(i);
@@ -125,7 +124,7 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
                     final String dataFileName = dataExtractionTask.getDataFileName();
                     final String hdfsLocation = dataExtractionTask.getHdfsLocation();
                     final String header = dataExtractionTask.getHeader();
-                    shellScriptResolver.runReducePartsMerger(hdfsLocation, header, homePath, dataFileName);
+                    shellScriptResolver.runReducePartsMerger(hdfsLocation, header, homePath, dataFileName, databaseName);
                 }
 
                 final Long queryEndTime = System.currentTimeMillis() - queryBeginTime;
@@ -136,8 +135,11 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
         }
     }
 
-    private void runArchiveTask(String databaseName, TrRequestInfo requestInfo) {
+    private void runArchiveTask(ExtractionRequest extractionRequest) {
         try {
+            final String databaseName = extractionRequest.getDatabaseName();
+            final TrRequestInfo requestInfo = extractionRequest.getRequestInfo();
+
             //
             // TODO: Archive the extracted data set and finally send the file to FTP server.
             //
@@ -146,7 +148,7 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
 
             final long archiveFileBeginTime = System.currentTimeMillis();
             logger.info(String.format("%s - Start archiving the extracted data set: %s", currentThreadName, archiveFileName));
-            shellScriptResolver.runArchiveExtractedDataSet(archiveFileName, ftpLocation, homePath);
+            shellScriptResolver.runArchiveExtractedDataSet(archiveFileName, ftpLocation, homePath, databaseName);
             logger.info(String.format("%s - Finish archiving the extracted data set: %s, Elapsed time: %d ms", currentThreadName, archiveFileName, (System.currentTimeMillis() - archiveFileBeginTime)));
 
             final String ftpURI = String.format("%s/%s", ftpLocation, archiveFileName);

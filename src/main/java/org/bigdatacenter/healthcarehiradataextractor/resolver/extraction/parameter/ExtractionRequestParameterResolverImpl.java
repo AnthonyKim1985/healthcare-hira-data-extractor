@@ -33,9 +33,10 @@ public class ExtractionRequestParameterResolverImpl implements ExtractionRequest
             final Integer columnType = parameterInfo.getColumnType();
             final String columnName = parameterInfo.getColumnName();
             final String columnValue = parameterInfo.getColumnValue();
+            final String columnOperator = parameterInfo.getColumnOperator();
 
             ParameterKey parameterKey = new ParameterKey(dataSetYear, databaseName, tableName, header);
-            ParameterValue parameterValue = new ParameterValue(columnType, columnName, columnValue);
+            ParameterValue parameterValue = new ParameterValue(columnType, columnName, columnValue, columnOperator);
 
             if (columnType == 1) {
                 Set<ParameterKey> joinKeySet = yearJoinKeyMap.get(dataSetYear);

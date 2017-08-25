@@ -11,4 +11,5 @@ public class ParameterValue implements Serializable {
     private Integer columnType;
     private String columnName;
     private String columnValue;
+    private String columnOperator;
 }

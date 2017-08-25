@@ -40,7 +40,12 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
     private final DataIntegrationPlatformAPICaller dataIntegrationPlatformAPICaller;
 
     @Autowired
-    public ExtractionRequestResolverImpl(SelectClauseBuilder selectClauseBuilder, WhereClauseBuilder whereClauseBuilder, JoinClauseBuilder joinClauseBuilder, ExtractionRequestParameterResolver extractionRequestParameterResolver, DataIntegrationPlatformAPICaller dataIntegrationPlatformAPICaller) {
+    public ExtractionRequestResolverImpl(SelectClauseBuilder selectClauseBuilder,
+                                         WhereClauseBuilder whereClauseBuilder,
+                                         JoinClauseBuilder joinClauseBuilder,
+                                         ExtractionRequestParameterResolver extractionRequestParameterResolver,
+                                         DataIntegrationPlatformAPICaller dataIntegrationPlatformAPICaller)
+    {
         this.selectClauseBuilder = selectClauseBuilder;
         this.whereClauseBuilder = whereClauseBuilder;
         this.joinClauseBuilder = joinClauseBuilder;
@@ -87,7 +92,7 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
                 for (ParameterKey parameterKey : joinTargetKeySet) {
                     final String tableName = parameterKey.getTableName();
 
-                    final String selectClause = selectClauseBuilder.buildClause(databaseName, tableName, parameterKey.getHeader());
+                    final String selectClause = selectClauseBuilder.buildClause(databaseName, tableName, parameterKey.getHeader(), Boolean.FALSE);
                     final String whereClause = whereClauseBuilder.buildClause(parameterMap.get(parameterKey));
                     final String query = String.format("%s %s", selectClause, whereClause);
                     logger.info(String.format("%s - query: %s", currentThreadName, query));
@@ -150,7 +155,7 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
             final String joinDbName = String.format("%s_join_%s_integrated", databaseName, joinCondition);
             final String joinTableName = String.format("%s_%s", databaseName, CommonUtil.getHashedString(joinQuery));
             final String dbAndHashedTableName = String.format("%s.%s", joinDbName, joinTableName);
-            final String extractionQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, header);
+            final String extractionQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, header, Boolean.FALSE);
 
             TableCreationTask tableCreationTask = new TableCreationTask(dbAndHashedTableName, joinQuery);
             DataExtractionTask dataExtractionTask = new DataExtractionTask(tableName/*Data File Name*/, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, header);
@@ -176,7 +181,7 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
                     final String extraHeader = dataIntegrationPlatformAPICaller.callReadProjectionNames(dataSetUID, extraFileName);
                     logger.info(String.format("%s - extraHeader: %s", currentThreadName, extraHeader));
 
-                    final String extraQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, extraHeader);
+                    final String extraQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, extraHeader, Boolean.TRUE);
                     logger.info(String.format("%s - extraQuery: %s", currentThreadName, extraQuery));
 
                     queryTaskList.add(new QueryTask(null, new DataExtractionTask(extraFileName/*Data File Name*/, extraHdfsLocation, extraQuery, extraHeader)));
