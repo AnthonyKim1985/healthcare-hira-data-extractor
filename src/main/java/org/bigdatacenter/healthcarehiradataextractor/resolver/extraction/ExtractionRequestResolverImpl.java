@@ -134,6 +134,8 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
                 queryTaskList.addAll(getJoinQueryTasks(adjacentTableInfoSet, targetJoinParameter, databaseName, joinCondition, requestInfo.getDataSetUID()));
             }
 
+            logger.info(String.format("%s - queryTaskList: %s", currentThreadName, queryTaskList));
+
             return new ExtractionRequest(databaseName, requestInfo, queryTaskList);
         } catch (Exception e) {
             e.printStackTrace();

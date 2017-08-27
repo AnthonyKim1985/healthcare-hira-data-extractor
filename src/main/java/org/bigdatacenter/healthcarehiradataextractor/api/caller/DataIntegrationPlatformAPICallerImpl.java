@@ -14,6 +14,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class DataIntegrationPlatformAPICallerImpl implements DataIntegrationPlatformAPICaller {
@@ -76,10 +77,14 @@ public class DataIntegrationPlatformAPICallerImpl implements DataIntegrationPlat
 
     @Override
     public void callUpdateElapsedTime(Integer dataSetUID, Long elapsedTime) {
+        final String formattedElapsedTime = String.format("%02d:%02d:%02d",
+                TimeUnit.MILLISECONDS.toHours(elapsedTime),
+                TimeUnit.MILLISECONDS.toMinutes(elapsedTime) - TimeUnit.HOURS.toMinutes(TimeUnit.MILLISECONDS.toHours(elapsedTime)),
+                TimeUnit.MILLISECONDS.toSeconds(elapsedTime) - TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(elapsedTime)));
+
         final MultiValueMap<String, String> parameters = new LinkedMultiValueMap<>();
         parameters.add("dataSetUID", String.valueOf(dataSetUID));
-        parameters.add("elapsedTime", dateFormat.format(new Date(elapsedTime)));
-
+        parameters.add("elapsedTime", formattedElapsedTime);
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(parameters, headers);
         Integer response = restTemplate.postForObject(updateElapsedTimeURL, request, Integer.class);
 

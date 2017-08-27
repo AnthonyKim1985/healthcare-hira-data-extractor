@@ -19,30 +19,34 @@ public class JoinClauseBuilderImpl implements JoinClauseBuilder {
     @Override
     public String buildClause(List<JoinParameter> joinParameterList) {
         if (joinParameterList == null || joinParameterList.isEmpty())
-            return null;
+            throw new NullPointerException("The JoinParameterList is either null or empty.");
 
         final StringBuilder joinQueryBuilder = new StringBuilder();
 
         final char entryTableAlias = 'A';
         final JoinParameter entryJoinParameter = joinParameterList.get(0);
 
-        if (joinParameterList.size() == 1) {
-            joinQueryBuilder.append(selectClauseBuilder.buildClause(entryJoinParameter.getDatabaseName(), entryJoinParameter.getTableName(), entryJoinParameter.getProjection(), Boolean.FALSE));
-        } else {
-            joinQueryBuilder.append(String.format("SELECT DISTINCT %c.%s FROM %s.%s %c",
-                    entryTableAlias, entryJoinParameter.getProjection(), entryJoinParameter.getDatabaseName(), entryJoinParameter.getTableName(), entryTableAlias));
+        try {
+            if (joinParameterList.size() == 1) {
+                joinQueryBuilder.append(selectClauseBuilder.buildClause(entryJoinParameter.getDatabaseName(), entryJoinParameter.getTableName(), entryJoinParameter.getProjection(), Boolean.FALSE));
+            } else {
+                joinQueryBuilder.append(String.format("SELECT DISTINCT %c.%s FROM %s.%s %c",
+                        entryTableAlias, entryJoinParameter.getProjection(), entryJoinParameter.getDatabaseName(), entryJoinParameter.getTableName(), entryTableAlias));
 
-            for (int i = 1; i < joinParameterList.size(); i++) {
-                JoinParameter joinParameter = joinParameterList.get(i);
+                for (int i = 1; i < joinParameterList.size(); i++) {
+                    JoinParameter joinParameter = joinParameterList.get(i);
 
-                final char prevTableAlias = (char) (entryTableAlias + i - 1);
-                final char currentTableAlias = (char) (entryTableAlias + i);
+                    final char prevTableAlias = (char) (entryTableAlias + i - 1);
+                    final char currentTableAlias = (char) (entryTableAlias + i);
 
-                joinQueryBuilder.append(String.format(" INNER JOIN %s.%s %c ON (%c.%s = %c.%s)",
-                        joinParameter.getDatabaseName(), joinParameter.getTableName(), currentTableAlias,
-                        prevTableAlias, joinParameter.getJoinKey(),
-                        currentTableAlias, joinParameter.getJoinKey()));
+                    joinQueryBuilder.append(String.format(" INNER JOIN %s.%s %c ON (%c.%s = %c.%s)",
+                            joinParameter.getDatabaseName(), joinParameter.getTableName(), currentTableAlias,
+                            prevTableAlias, joinParameter.getJoinKey(),
+                            currentTableAlias, joinParameter.getJoinKey()));
+                }
             }
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
         }
 
         return joinQueryBuilder.toString();
@@ -51,7 +55,7 @@ public class JoinClauseBuilderImpl implements JoinClauseBuilder {
     @Override
     public String buildClause(JoinParameter sourceJoinParameter, JoinParameter targetJoinParameter) {
         if (sourceJoinParameter == null || targetJoinParameter == null)
-            return null;
+            throw new NullPointerException("Either sourceJoinParameter or targetJoinParameter is null.");
 
         return String.format("SELECT DISTINCT A.* FROM %s.%s A INNER JOIN %s.%s B ON (A.%s = B.%s)",
                 sourceJoinParameter.getDatabaseName(), sourceJoinParameter.getTableName(),
