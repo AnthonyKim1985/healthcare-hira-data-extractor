@@ -180,7 +180,7 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
                     final String extraHdfsLocation = CommonUtil.getHdfsLocation(String.format("%s.%s", databaseName, extraFileName), dataSetUID);
                     logger.info(String.format("%s - extraHdfsLocation: %s", currentThreadName, extraHdfsLocation));
 
-                    final String extraHeader = dataIntegrationPlatformAPICaller.callReadProjectionNames(dataSetUID, extraFileName);
+                    final String extraHeader = dataIntegrationPlatformAPICaller.callReadProjectionNames(dataSetUID, extraFileName, dataSetYear);
                     logger.info(String.format("%s - extraHeader: %s", currentThreadName, extraHeader));
 
                     final String extraQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, extraHeader, Boolean.TRUE);
