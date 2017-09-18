@@ -21,7 +21,7 @@ public class StatisticAPICallerImpl implements StatisticAPICaller {
 
     private final HttpHeaders headers;
 
-    @Value("{platform.rest.api.create.statistic}")
+    @Value("${platform.rest.api.create.statistic}")
     private String createStatisticURL;
 
     public StatisticAPICallerImpl() {
