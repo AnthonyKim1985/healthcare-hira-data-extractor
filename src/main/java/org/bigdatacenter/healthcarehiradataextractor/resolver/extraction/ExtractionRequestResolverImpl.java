@@ -79,6 +79,8 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
                 Map<ParameterKey, List<ParameterValue>> parameterMap = yearParameterMap.get(year);
                 Set<ParameterKey> joinTargetKeySet = yearJoinKeyMap.get(year);
 
+                logger.info(String.format("%s - joinTargetKeySet: %s", currentThreadName, joinTargetKeySet));
+
                 //
                 // TODO: 1.1. 조인 대상키가 없으면 해당 연도를 스킵힌다.
                 //
@@ -105,7 +107,7 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
                     TableCreationTask tableCreationTask = new TableCreationTask(dbAndHashedTableName, query);
 
                     queryTaskList.add(new QueryTask(tableCreationTask, null));
-                    joinParameterList.add(new JoinParameter(extrDbName, extrTableName, joinCondition, "key_seq"));
+                    joinParameterList.add(new JoinParameter(extrDbName, extrTableName, joinCondition, "spec_id_sno"));
                 }
 
                 //
