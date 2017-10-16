@@ -44,8 +44,7 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
                                          WhereClauseBuilder whereClauseBuilder,
                                          JoinClauseBuilder joinClauseBuilder,
                                          ExtractionRequestParameterResolver extractionRequestParameterResolver,
-                                         DataIntegrationPlatformAPICaller dataIntegrationPlatformAPICaller)
-    {
+                                         DataIntegrationPlatformAPICaller dataIntegrationPlatformAPICaller) {
         this.selectClauseBuilder = selectClauseBuilder;
         this.whereClauseBuilder = whereClauseBuilder;
         this.joinClauseBuilder = joinClauseBuilder;
@@ -56,10 +55,11 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
     @Override
     public ExtractionRequest buildExtractionRequest(ExtractionParameter extractionParameter) {
         if (extractionParameter == null)
-            throw new NullPointerException(String.format("%s - extractionParameter is null.", currentThreadName));
+            throw new NullPointerException("The extractionParameter is null.");
 
         try {
             final TrRequestInfo requestInfo = extractionParameter.getRequestInfo();
+            final Integer dataSetUID = requestInfo.getDataSetUID();
             final String databaseName = extractionParameter.getDatabaseName();
             final String joinCondition = requestInfo.getJoinCondition();
 
@@ -79,8 +79,6 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
                 Map<ParameterKey, List<ParameterValue>> parameterMap = yearParameterMap.get(year);
                 Set<ParameterKey> joinTargetKeySet = yearJoinKeyMap.get(year);
 
-                logger.info(String.format("%s - joinTargetKeySet: %s", currentThreadName, joinTargetKeySet));
-
                 //
                 // TODO: 1.1. 조인 대상키가 없으면 해당 연도를 스킵힌다.
                 //
@@ -97,12 +95,12 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
                     final String selectClause = selectClauseBuilder.buildClause(databaseName, tableName, parameterKey.getHeader(), Boolean.FALSE);
                     final String whereClause = whereClauseBuilder.buildClause(parameterMap.get(parameterKey));
                     final String query = String.format("%s %s", selectClause, whereClause);
-                    logger.info(String.format("%s - query: %s", currentThreadName, query));
+                    logger.debug(String.format("(dataSetUID=%d / threadName=%s) - query: %s", dataSetUID, currentThreadName, query));
 
                     final String extrDbName = String.format("%s_extracted", databaseName);
                     final String extrTableName = String.format("%s_%s", databaseName, CommonUtil.getHashedString(query));
                     final String dbAndHashedTableName = String.format("%s.%s", extrDbName, extrTableName);
-                    logger.info(String.format("%s - dbAndHashedTableName: %s", currentThreadName, dbAndHashedTableName));
+                    logger.debug(String.format("(dataSetUID=%d / threadName=%s) - dbAndHashedTableName: %s", dataSetUID, currentThreadName, dbAndHashedTableName));
 
                     TableCreationTask tableCreationTask = new TableCreationTask(dbAndHashedTableName, query);
 
@@ -114,7 +112,7 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
                 // TODO: 1.3. 임시 데이블들의 조인 연산을 위한 테이블 생성 쿼리를 생성한다.
                 //
                 final String joinQuery = joinClauseBuilder.buildClause(joinParameterList);
-                logger.info(String.format("%s - joinQuery: %s", currentThreadName, joinQuery));
+                logger.debug(String.format("(dataSetUID=%d / threadName=%s) - joinQuery: %s", dataSetUID, currentThreadName, joinQuery));
 
                 final String joinDbName = String.format("%s_join_%s_integrated", databaseName, joinCondition);
                 final String joinTableName = String.format("%s_%s", databaseName, CommonUtil.getHashedString(joinQuery));
@@ -136,9 +134,10 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
                 queryTaskList.addAll(getJoinQueryTasks(adjacentTableInfoSet, targetJoinParameter, databaseName, joinCondition, requestInfo.getDataSetUID()));
             }
 
-            logger.info(String.format("%s - queryTaskList: %s", currentThreadName, queryTaskList));
+            final ExtractionRequest extractionRequest = new ExtractionRequest(databaseName, requestInfo, queryTaskList);
+            logger.info(String.format("(dataSetUID=%d / threadName=%s) - ExtractionRequest: %s", dataSetUID, currentThreadName, extractionRequest));
 
-            return new ExtractionRequest(databaseName, requestInfo, queryTaskList);
+            return extractionRequest;
         } catch (Exception e) {
             e.printStackTrace();
             throw new NullPointerException(e.getMessage());
@@ -148,51 +147,60 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
     private List<QueryTask> getJoinQueryTasks(Set<AdjacentTableInfo> adjacentTableInfoSet, JoinParameter targetJoinParameter, String databaseName, String joinCondition, Integer dataSetUID) {
         List<QueryTask> queryTaskList = new ArrayList<>();
 
-        for (AdjacentTableInfo adjacentTableInfo : adjacentTableInfoSet) {
-            final Integer dataSetYear = adjacentTableInfo.getDataSetYear();
-            final String tableName = adjacentTableInfo.getTableName();
-            final String header = adjacentTableInfo.getHeader();
+        try {
+            for (AdjacentTableInfo adjacentTableInfo : adjacentTableInfoSet) {
+                final Integer dataSetYear = adjacentTableInfo.getDataSetYear();
+                final String tableName = adjacentTableInfo.getTableName();
+                final String header = adjacentTableInfo.getHeader();
 
-            JoinParameter sourceJoinParameter = new JoinParameter(databaseName, tableName, header, joinCondition);
+                JoinParameter sourceJoinParameter = new JoinParameter(databaseName, tableName, header, joinCondition);
 
-            final String joinQuery = joinClauseBuilder.buildClause(sourceJoinParameter, targetJoinParameter, Boolean.FALSE);
-            final String joinDbName = String.format("%s_join_%s_integrated", databaseName, joinCondition);
-            final String joinTableName = String.format("%s_%s", databaseName, CommonUtil.getHashedString(joinQuery));
-            final String dbAndHashedTableName = String.format("%s.%s", joinDbName, joinTableName);
-            final String extractionQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, header, Boolean.FALSE);
+                final String joinQuery = joinClauseBuilder.buildClause(sourceJoinParameter, targetJoinParameter, Boolean.FALSE);
+                final String joinDbName = String.format("%s_join_%s_integrated", databaseName, joinCondition);
+                final String joinTableName = String.format("%s_%s", databaseName, CommonUtil.getHashedString(joinQuery));
+                final String dbAndHashedTableName = String.format("%s.%s", joinDbName, joinTableName);
+                final String extractionQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, header, Boolean.FALSE);
 
-            TableCreationTask tableCreationTask = new TableCreationTask(dbAndHashedTableName, joinQuery);
-            DataExtractionTask dataExtractionTask = new DataExtractionTask(tableName/*Data File Name*/, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, header);
+                TableCreationTask tableCreationTask = new TableCreationTask(dbAndHashedTableName, joinQuery);
+                DataExtractionTask dataExtractionTask = new DataExtractionTask(tableName/*Data File Name*/, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, header);
 
-            queryTaskList.add(new QueryTask(tableCreationTask, dataExtractionTask));
+                queryTaskList.add(new QueryTask(tableCreationTask, dataExtractionTask));
 
-            //
-            // TODO: Make ykiho Extraction tasks
-            //
-            if (tableName.contains("_t20_")) {
-                final String[] extraTablePrefixes = {"ykiho"};
+                //
+                // TODO: Make ykiho Extraction tasks
+                //
+                if (tableName.contains("_t20_")) {
+                    final String[] extraTablePrefixes = {"ykiho"};
 
-                for (String extraTablePrefix : extraTablePrefixes) {
-                    logger.info(String.format("%s - ex_joinDbName: %s", currentThreadName, joinDbName));
-                    logger.info(String.format("%s - ex_joinTableName: %s", currentThreadName, joinTableName));
+                    for (String extraTablePrefix : extraTablePrefixes) {
+                        logger.debug(String.format("(dataSetUID=%d / threadName=%s) - The joinDbName.joinTableName for extra-extraction: %s.%s", dataSetUID, currentThreadName, joinDbName, joinTableName));
 
-                    final String extraFileName = String.format("%s_%s_%d", databaseName, extraTablePrefix, dataSetYear);
-                    logger.info(String.format("%s - extraFileName: %s", currentThreadName, extraFileName));
+                        final String extraFileName = String.format("%s_%s_%d", databaseName, extraTablePrefix, dataSetYear);
+                        logger.debug(String.format("(dataSetUID=%d / threadName=%s) - The fileName for extra-extraction: %s", dataSetUID, currentThreadName, extraFileName));
 
-                    final String extraHdfsLocation = CommonUtil.getHdfsLocation(String.format("%s.%s", databaseName, extraFileName), dataSetUID);
-                    logger.info(String.format("%s - extraHdfsLocation: %s", currentThreadName, extraHdfsLocation));
+                        final String extraHdfsLocation = CommonUtil.getHdfsLocation(String.format("%s.%s", databaseName, extraFileName), dataSetUID);
+                        logger.debug(String.format("(dataSetUID=%d / threadName=%s) - The hdfsLocation for extra-extraction: %s", dataSetUID, currentThreadName, extraHdfsLocation));
 
-                    final String extraHeader = dataIntegrationPlatformAPICaller.callReadProjectionNames(dataSetUID, extraFileName, dataSetYear);
-                    logger.info(String.format("%s - extraHeader: %s", currentThreadName, extraHeader));
+                        final String extraHeader = dataIntegrationPlatformAPICaller.callReadProjectionNames(dataSetUID, extraFileName, dataSetYear);
+                        logger.debug(String.format("(dataSetUID=%d / threadName=%s) - The header for extra-extraction: %s", dataSetUID, currentThreadName, extraHeader));
 
-                    final String extraQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, extraHeader, Boolean.TRUE);
-                    logger.info(String.format("%s - extraQuery: %s", currentThreadName, extraQuery));
+                        final String extraQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, extraHeader, Boolean.TRUE);
+                        logger.debug(String.format("(dataSetUID=%d / threadName=%s) - The query for extra-extraction: %s", dataSetUID, currentThreadName, extraQuery));
 
-                    queryTaskList.add(new QueryTask(null, new DataExtractionTask(extraFileName/*Data File Name*/, extraHdfsLocation, extraQuery, extraHeader)));
+                        final QueryTask queryTask = new QueryTask(null, new DataExtractionTask(extraFileName/*Data File Name*/, extraHdfsLocation, extraQuery, extraHeader));
+                        logger.debug(String.format("(dataSetUID=%d / threadName=%s) - The queryTask for extra-extraction: %s", dataSetUID, currentThreadName, queryTask));
+
+                        queryTaskList.add(queryTask);
+                    }
                 }
             }
-        }
 
-        return queryTaskList;
+            logger.info(String.format("(dataSetUID=%d / threadName=%s) - QueryTaskList For Join Operation: %s", dataSetUID, currentThreadName, queryTaskList));
+
+            return queryTaskList;
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
+        }
     }
 }
