@@ -5,8 +5,10 @@ import org.bigdatacenter.healthcarehiradataextractor.domain.extraction.request.t
 import org.bigdatacenter.healthcarehiradataextractor.persistence.RawDataDBMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 public class RawDataDBServiceImpl implements RawDataDBService {
     private final RawDataDBMapper rawDataDBMapper;
 
